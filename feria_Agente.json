@@ -1,0 +1,257 @@
+{
+  "name": "feria_Agente",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "webhook-la-soberana",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -192,
+        -80
+      ],
+      "id": "55ed1f57-7299-4ec5-9d48-1cf5c4c7e373",
+      "name": "Webhook",
+      "webhookId": "54c67183-8656-4581-aff7-cf702ec99ee8"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=\"Eres el asistente virtual oficial de La Soberana — La Feria del Piloto. 🎡\n\nTu misión: Ayudar a los feriantes con información clara sobre inscripciones, fechas, ubicación y requisitos.\nTu personalidad: Eres amable, entusiasta y muy organizado. Siempre usas emojis para que la conversación sea amena. ✨\n\nInstrucciones importantes:\n\nResponde de forma concisa. 📝\n\nSi un usuario pregunta algo que no sabes, dile amablemente que aguarde un momento y que un organizador humano lo contactará pronto. 🧑‍💻\n\nResponde siempre basándote en el mensaje del emprendedor que recibes aquí: {{ $json.mensaje_usuario }}\"\n\nInformación de la feria:\n\n- La feria se realiza en la plaza del barrio El Piloto.\n- El horario es de 18:00 a 22:00.\n- Los emprendedores deben inscribirse en el formulario.\n- El puesto tiene un costo de colaboración para la organización.\n- Solo se aceptan productos artesanales o de producción propia.\n\nRespondé de forma breve, amable y clara para WhatsApp.\nSi no sabés algo, decí que lo va a responder la organización.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        480,
+        -80
+      ],
+      "id": "a4827e1d-48fb-4600-b399-76046cb10f31",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "mistral:latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        488,
+        144
+      ],
+      "id": "a764f1ec-ae2a-4e5f-9c9e-b053e37cbdd4",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "o74V6hFQmYyW69St",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        616,
+        144
+      ],
+      "id": "8a183592-24dd-4623-8538-6de5d26670da",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3000/api/sendText",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chatId\": \"{{ $json.chat_id }}\",\n  \"text\": \"{{ $json.output }}\",\n  \"session\": \"default\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        832,
+        -80
+      ],
+      "id": "e77ece61-ba4f-438f-a195-121dbb71fcb7",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "a1ba40ff-4b50-4550-b021-7c7475a53643",
+              "leftValue": "={{ $json.body.payload.fromMe }}",
+              "rightValue": "'FALSE'",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "d1163eb1-ca9c-47dc-ba3f-524fc8ba79c9",
+              "leftValue": "={{ $json.body.event }}",
+              "rightValue": "message",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "038f5509-1f87-4cde-8b22-cd206cbbc225",
+              "leftValue": "={{ $json.body.payload.from }}",
+              "rightValue": "@c.us",
+              "operator": {
+                "type": "string",
+                "operation": "endsWith"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        32,
+        -80
+      ],
+      "id": "3689d031-9c3d-4ae9-8629-3dbec02061fc",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "00c5dcce-d46d-419d-a77f-738e5365d38c",
+              "name": "mensaje_usuario",
+              "value": "={{ $('Webhook').item.json.body.payload.body }}",
+              "type": "string"
+            },
+            {
+              "id": "e4ea41de-4f46-44d5-adc0-594bc2fd34ae",
+              "name": "chat_id",
+              "value": "={{ $('Webhook').item.json.body.payload.from }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        256,
+        -80
+      ],
+      "id": "aae0d366-dac5-4f75-a593-67699d161d69",
+      "name": "Edit Fields"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "0fbb0b80-2f5c-468c-83d1-80990ca3ac2a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "47279345d97db5f557235736fcc4f1eccadea4948e3b6ab69a08a06e91575993"
+  },
+  "id": "pDc1STo8llyYnsAc",
+  "tags": []
+}
